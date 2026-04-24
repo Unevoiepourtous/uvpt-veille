@@ -1,0 +1,10 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: #f7f3e9; }
+body {
+  font-family: 'DM Sans', 'Google Sans', 'Product Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+#root { min-height: 100vh; min-height: 100dvh; }
+input, select, textarea, button { font-family: inherit; }
