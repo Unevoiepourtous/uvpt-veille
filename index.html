@@ -1,22 +1,1540 @@
-<!DOCTYPE html>
-<html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>UVPT · Veille Appels à Projets</title>
-    <meta name="description" content="Veille IA sur les appels à projets pour Une Voie Pour Tous" />
-    <meta name="theme-color" content="#0a1f44" />
+<!-- UVPT — Veille AAP v2 -->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700;9..144,900&family=Inter+Tight:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-    <!-- PWA iOS : permet d'ajouter à l'écran d'accueil comme une app -->
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="UVPT Veille" />
-    <link rel="apple-touch-icon" href="./icon-192.png" />
-    <link rel="icon" type="image/png" href="./icon-192.png" />
-    <link rel="manifest" href="./manifest.json" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
-</html>
+  :root {
+    --ink: #0f0f0e;
+    --ink-soft: #2a2a28;
+    --paper: #f5f1ea;
+    --paper-warm: #ebe5d9;
+    --line: #c8c0b0;
+    --line-soft: #d9d1c0;
+    --accent: #b8341a;
+    --accent-deep: #8a1f0a;
+    --gold: #b08840;
+    --green: #2d5a3d;
+    --blue: #1e3a5f;
+    --muted: #6b6557;
+    --shadow: 0 1px 0 rgba(0,0,0,.04), 0 8px 24px -8px rgba(15,15,14,.08);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter Tight', -apple-system, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    min-height: 100vh;
+  }
+
+  /* ============ SIDEBAR ============ */
+  .sidebar {
+    background: var(--paper-warm);
+    border-right: 1px solid var(--line);
+    padding: 28px 24px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+
+  .brand {
+    font-family: 'Fraunces', serif;
+    font-weight: 900;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .brand span { color: var(--accent); }
+  .brand-sub {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--muted);
+    margin-bottom: 28px;
+  }
+
+  .stat-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 28px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .stat {
+    background: var(--paper);
+    border: 1px solid var(--line-soft);
+    padding: 10px 12px;
+    border-radius: 2px;
+  }
+  .stat-num {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1;
+  }
+  .stat-num.urgent { color: var(--accent); }
+  .stat-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .filter-group { margin-bottom: 22px; }
+  .filter-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--muted);
+    font-weight: 600;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .filter-title button {
+    background: none;
+    border: none;
+    font-size: 9px;
+    color: var(--accent);
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    font-family: inherit;
+    font-size: 13px;
+    border-radius: 2px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .search-input:focus { border-color: var(--ink); }
+
+  .chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .chip {
+    font-size: 11px;
+    padding: 5px 10px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    cursor: pointer;
+    transition: all .12s;
+    user-select: none;
+    font-family: inherit;
+  }
+  .chip:hover { border-color: var(--ink); }
+  .chip.active {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+
+  .radio-list { display: flex; flex-direction: column; gap: 4px; }
+  .radio-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    cursor: pointer;
+    border-radius: 2px;
+    font-size: 13px;
+    transition: background .12s;
+  }
+  .radio-item:hover { background: rgba(0,0,0,.04); }
+  .radio-item input { accent-color: var(--accent); }
+  .radio-count {
+    margin-left: auto;
+    font-size: 10px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ============ MAIN ============ */
+  .main { padding: 32px 40px; max-width: 100%; min-width: 0; }
+
+  .topbar {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 4px;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 16px;
+  }
+  .page-title {
+    font-family: 'Fraunces', serif;
+    font-size: 38px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .topbar-actions { display: flex; gap: 8px; }
+  .btn {
+    padding: 8px 14px;
+    border: 1px solid var(--ink);
+    background: var(--paper);
+    font-family: inherit;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all .12s;
+    font-weight: 500;
+    border-radius: 2px;
+  }
+  .btn:hover { background: var(--ink); color: var(--paper); }
+  .btn.primary { background: var(--ink); color: var(--paper); }
+  .btn.primary:hover { background: var(--accent); border-color: var(--accent); }
+  .btn.accent { background: var(--accent); color: var(--paper); border-color: var(--accent); }
+  .btn.accent:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+
+  .meta-line {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 12px;
+    margin-bottom: 24px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .meta-line .dot { width: 4px; height: 4px; background: var(--muted); border-radius: 50%; }
+  .sort-select {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    padding: 4px 8px;
+    font-family: inherit;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+
+  /* ============ AAP LIST ============ */
+  .aap-list {
+    display: flex;
+    flex-direction: column;
+  }
+  .aap-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 180px 120px 100px;
+    gap: 20px;
+    padding: 22px 0;
+    border-bottom: 1px solid var(--line-soft);
+    cursor: pointer;
+    transition: background .12s;
+    align-items: start;
+  }
+  .aap-row:hover { background: rgba(0,0,0,.025); }
+  .aap-row.selected {
+    background: rgba(184,52,26,.05);
+    border-left: 3px solid var(--accent);
+    padding-left: 16px;
+    margin-left: -19px;
+  }
+
+  .aap-score {
+    font-family: 'Fraunces', serif;
+    font-size: 36px;
+    font-weight: 600;
+    line-height: 0.9;
+    letter-spacing: -0.02em;
+  }
+  .aap-score-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    margin-top: 3px;
+    font-weight: 600;
+  }
+  .aap-score.high { color: var(--green); }
+  .aap-score.med { color: var(--gold); }
+  .aap-score.low { color: var(--muted); }
+
+  .aap-headline {
+    font-family: 'Fraunces', serif;
+    font-size: 19px;
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    margin-bottom: 6px;
+    color: var(--ink);
+  }
+  .aap-funder {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+  }
+  .aap-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+  .tag {
+    font-size: 10px;
+    padding: 2px 8px;
+    background: var(--paper-warm);
+    border: 1px solid var(--line-soft);
+    border-radius: 100px;
+    color: var(--ink-soft);
+    font-weight: 500;
+  }
+  .tag.type-public { background: #e8eef5; border-color: #c5d4e5; color: var(--blue); }
+  .tag.type-prive { background: #f5ebe8; border-color: #e5cdc5; color: var(--accent-deep); }
+
+  .aap-funding {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--ink);
+  }
+  .aap-funding-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .aap-deadline {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .aap-deadline-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .aap-days {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 100px;
+    font-family: 'Inter Tight', sans-serif;
+    font-weight: 600;
+  }
+  .aap-days.urgent { background: var(--accent); color: var(--paper); }
+  .aap-days.soon { background: var(--gold); color: var(--paper); }
+  .aap-days.normal { background: var(--paper-warm); color: var(--muted); border: 1px solid var(--line-soft); }
+  .aap-days.passed { background: #ddd; color: #888; text-decoration: line-through; }
+
+  .aap-status-cell { display: flex; align-items: center; }
+  .status-pill {
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 100px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    border: 1px solid transparent;
+    cursor: pointer;
+  }
+  .status-todo { background: var(--paper-warm); color: var(--muted); border-color: var(--line); }
+  .status-progress { background: #fff8e6; color: var(--gold); border-color: #e8d4a0; }
+  .status-submitted { background: #e6f0ea; color: var(--green); border-color: #b5d4be; }
+  .status-rejected { background: #f5e8e5; color: var(--accent); border-color: #e0c0b8; }
+  .status-won { background: var(--green); color: var(--paper); border-color: var(--green); }
+
+  /* ============ DETAIL DRAWER ============ */
+  .drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15,15,14,.4);
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s;
+  }
+  .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
+  .drawer {
+    position: fixed;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 720px;
+    max-width: 95vw;
+    background: var(--paper);
+    z-index: 51;
+    transform: translateX(100%);
+    transition: transform .3s cubic-bezier(.4,0,.2,1);
+    overflow-y: auto;
+    box-shadow: -20px 0 60px -20px rgba(0,0,0,.2);
+  }
+  .drawer.open { transform: translateX(0); }
+  .drawer-header {
+    padding: 24px 36px;
+    border-bottom: 1px solid var(--line);
+    background: var(--paper-warm);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+  .drawer-close {
+    background: none;
+    border: 1px solid var(--ink);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  .drawer-close:hover { background: var(--ink); color: var(--paper); }
+  .drawer-eyebrow {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .drawer-title {
+    font-family: 'Fraunces', serif;
+    font-size: 28px;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    font-weight: 500;
+    margin-bottom: 12px;
+  }
+  .drawer-funder {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-bottom: 0;
+  }
+  .drawer-funder strong { font-weight: 600; }
+
+  .drawer-body { padding: 28px 36px 60px; }
+
+  .key-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 28px;
+    padding: 18px 20px;
+    background: var(--paper-warm);
+    border: 1px solid var(--line-soft);
+    border-radius: 2px;
+  }
+  .key-item .k-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--muted);
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+  .key-item .k-value {
+    font-family: 'Fraunces', serif;
+    font-size: 17px;
+    font-weight: 500;
+    line-height: 1.2;
+  }
+  .key-item.full { grid-column: 1 / -1; }
+
+  .section { margin-bottom: 32px; }
+  .section-title {
+    font-family: 'Fraunces', serif;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 2px 6px;
+    border-radius: 2px;
+    font-weight: 500;
+  }
+  .section-body { font-size: 14px; line-height: 1.65; color: var(--ink-soft); }
+  .section-body p { margin: 0 0 12px; }
+  .section-body ul { margin: 0; padding-left: 18px; }
+  .section-body li { margin-bottom: 6px; }
+
+  .ai-block {
+    background: linear-gradient(180deg, var(--paper-warm) 0%, var(--paper) 100%);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    padding: 18px 20px;
+    border-radius: 2px;
+    margin-bottom: 14px;
+    position: relative;
+  }
+  .ai-block-tag {
+    position: absolute;
+    top: -10px;
+    left: 16px;
+    font-size: 9px;
+    background: var(--accent);
+    color: var(--paper);
+    padding: 3px 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    font-weight: 600;
+    border-radius: 2px;
+  }
+
+  .ai-loading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--muted);
+    font-size: 13px;
+    font-style: italic;
+  }
+  .ai-loading::before {
+    content: '';
+    width: 12px; height: 12px;
+    border: 2px solid var(--line);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .pitch-box {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 22px 24px;
+    border-radius: 2px;
+    margin-bottom: 14px;
+    font-family: 'Fraunces', serif;
+    font-size: 15px;
+    line-height: 1.55;
+    position: relative;
+  }
+  .pitch-box::before {
+    content: '« ';
+    font-size: 40px;
+    position: absolute;
+    top: 0px;
+    left: 8px;
+    color: var(--accent);
+    font-weight: 700;
+    line-height: 1;
+  }
+  .pitch-box-content { padding-left: 24px; }
+
+  .checklist {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--line-soft);
+    font-size: 13px;
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .checklist input { margin-top: 3px; accent-color: var(--accent); }
+
+  .angle-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .angle-item {
+    background: var(--paper);
+    border: 1px solid var(--line-soft);
+    padding: 14px 16px;
+    border-radius: 2px;
+  }
+  .angle-num {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    color: var(--accent);
+    margin-right: 6px;
+  }
+  .angle-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+    font-size: 14px;
+  }
+  .angle-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .drawer-actions {
+    position: sticky;
+    bottom: 0;
+    background: var(--paper);
+    border-top: 1px solid var(--line);
+    padding: 14px 36px;
+    display: flex;
+    gap: 8px;
+    margin: 0 -36px -60px;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--muted);
+  }
+  .empty-state h3 {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 500;
+    margin: 0 0 8px;
+    color: var(--ink);
+  }
+
+  /* Status dropdown */
+  .status-menu {
+    position: absolute;
+    background: var(--paper);
+    border: 1px solid var(--ink);
+    border-radius: 2px;
+    box-shadow: var(--shadow);
+    z-index: 60;
+    min-width: 160px;
+    overflow: hidden;
+  }
+  .status-menu button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .status-menu button:hover { background: var(--paper-warm); }
+
+  /* responsive minimum */
+  @media (max-width: 1100px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { position: relative; height: auto; }
+    .aap-row { grid-template-columns: 60px 1fr 100px; }
+    .aap-row > .col-funding, .aap-row > .col-status { display: none; }
+  }
+</style>
+
+<div id="root"></div>
+
+<script type="module">
+  import React, { useState, useMemo, useEffect } from 'https://esm.sh/react@18.3.1';
+  import { createRoot } from 'https://esm.sh/react-dom@18.3.1/client';
+
+  const h = React.createElement;
+
+  // ================== UVPT CONTEXT ==================
+  const UVPT_CONTEXT = `
+Une Voie Pour Tous (UVPT) — Association loi 1901 fondée en septembre 2021.
+Mission : plaidoyer et co-construction de politiques publiques pour la voie professionnelle (lycées professionnels) en France.
+Programmes phares :
+- Les Pro'metteurs : engagement civique pour lycéens pros, partenariat Sénat
+- Les Boussoles : programme pour mères de quartiers prioritaires (QPV)
+Territoires : Île-de-France, PACA, Occitanie, Guadeloupe.
+Fondateur/directeur : Dylan Ayissi.
+Thématiques d'expertise : voie pro, égalité des chances, jeunesse QPV, citoyenneté, insertion, décrochage, parentalité, démocratie participative.
+`;
+
+  // ================== AAP DATABASE (large) ==================
+  const AAP_DATA = [
+    {
+      id: 'malakoff-2026',
+      title: 'AAP Handicap 2026 — Insertion et autonomie',
+      funder: 'Fondation Malakoff Humanis Handicap',
+      type: 'prive',
+      themes: ['handicap', 'insertion', 'jeunesse', 'voie-pro'],
+      regions: ['national'],
+      amount_min: 5000, amount_max: 60000, amount_label: '5 000 € — 60 000 €',
+      deadline: '2026-05-04',
+      open_date: '2026-02-01',
+      url: 'https://malakoffhumanis.com/fondation-handicap',
+      description: "Soutien aux projets d'insertion sociale et professionnelle des personnes en situation de handicap, avec un focus sur la jeunesse et la formation.",
+      criteria: [
+        "Public en situation de handicap (RQTH ou équivalent)",
+        "Projet sur 1 à 2 ans, co-financement à 50% minimum requis",
+        "Évaluation d'impact obligatoire",
+        "Territoire France métropolitaine + DOM"
+      ],
+      pieces: [
+        "Dossier de candidature en ligne",
+        "Budget prévisionnel détaillé",
+        "Plan de co-financement (lettres d'intention partenaires)",
+        "Statuts + RIB + dernier rapport d'activité",
+        "CV de la personne référente"
+      ],
+      uvpt_score: 92,
+      uvpt_match: "Très haut — projet 'Pro'metteurs Inclusifs' déjà en cours de préparation"
+    },
+    {
+      id: 'fdf-jeunesse-2026',
+      title: 'Programme Jeunesse 2026 — Décrochage et insertion',
+      funder: 'Fondation de France',
+      type: 'prive',
+      themes: ['decrochage', 'jeunesse', 'insertion', 'voie-pro'],
+      regions: ['national'],
+      amount_min: 10000, amount_max: 80000, amount_label: '10 000 € — 80 000 €',
+      deadline: '2026-06-15',
+      open_date: '2026-03-01',
+      url: 'https://www.fondationdefrance.org',
+      description: "Accompagnement des jeunes 16-25 ans en situation de décrochage ou de fragilité éducative. Priorité aux QPV et zones rurales isolées.",
+      criteria: [
+        "Public 16-25 ans, prioritairement QPV",
+        "Démarche partenariale exigée (école, collectivité, asso)",
+        "Approche par les pairs valorisée"
+      ],
+      pieces: ["Note d'intention 4 pages", "Budget", "Convention partenariale", "Rapport d'activité N-1"],
+      uvpt_score: 88,
+      uvpt_match: "Très haut — alignement parfait avec Les Pro'metteurs"
+    },
+    {
+      id: 'apprentis-auteuil-2026',
+      title: 'Soutien aux acteurs de l\'éducation 2026',
+      funder: 'Fondation Apprentis d\'Auteuil',
+      type: 'prive',
+      themes: ['education', 'jeunesse', 'parentalite', 'qpv'],
+      regions: ['national'],
+      amount_min: 15000, amount_max: 50000, amount_label: '15 000 € — 50 000 €',
+      deadline: '2026-05-30',
+      open_date: '2026-02-15',
+      url: 'https://www.apprentis-auteuil.org',
+      description: "Soutien aux associations qui agissent auprès des jeunes en difficulté et de leurs familles, avec une attention particulière à la parentalité.",
+      criteria: ["Asso loi 1901 d'au moins 3 ans", "Action en faveur des familles fragilisées"],
+      pieces: ["Dossier en ligne", "Budget pluriannuel", "Bilans 3 dernières années"],
+      uvpt_score: 85,
+      uvpt_match: "Haut — Les Boussoles correspond très bien"
+    },
+    {
+      id: 'cite-educative-bagneux',
+      title: 'AAP Cité Éducative Bagneux 2026',
+      funder: 'Cité Éducative de Bagneux (Préfecture 92)',
+      type: 'public',
+      themes: ['education', 'qpv', 'jeunesse'],
+      regions: ['ile-de-france'],
+      amount_min: 2000, amount_max: 15000, amount_label: '2 000 € — 15 000 €',
+      deadline: '2026-05-15',
+      open_date: '2026-03-15',
+      url: 'https://www.bagneux92.fr',
+      description: "Financement d'actions éducatives à Bagneux dans le cadre de la cité éducative — alliance école/famille/quartier sur l'arc 0-25 ans.",
+      criteria: ["Action sur le territoire de Bagneux", "Co-construction avec l'EN"],
+      pieces: ["Fiche action", "Budget", "Lettre de soutien établissement"],
+      uvpt_score: 95,
+      uvpt_match: "Excellent — UVPT déjà implanté, partenariat Lycée Léonard de Vinci en cours"
+    },
+    {
+      id: 'sncf-tutorat-2026',
+      title: 'Mécénat SNCF — Tutorat et orientation',
+      funder: 'Fondation SNCF',
+      type: 'prive',
+      themes: ['orientation', 'jeunesse', 'voie-pro', 'mentorat'],
+      regions: ['national'],
+      amount_min: 5000, amount_max: 30000, amount_label: '5 000 € — 30 000 €',
+      deadline: '2026-09-30',
+      open_date: '2026-06-01',
+      url: 'https://www.sncf.com/fr/groupe/fondation',
+      description: "Soutien aux programmes de tutorat, mentorat, et lutte contre l'illettrisme pour jeunes des quartiers prioritaires et zones rurales.",
+      criteria: ["Asso d'au moins 2 ans", "Public cible : 11-25 ans"],
+      pieces: ["Dossier en ligne", "Vidéo de présentation (optionnelle)", "Budget"],
+      uvpt_score: 78,
+      uvpt_match: "Bon — pertinent pour l'axe orientation des Pro'metteurs"
+    },
+    {
+      id: 'caf-parentalite',
+      title: 'AAP REAAP 2026 — Parentalité',
+      funder: 'CAF (Réseau d\'Écoute, d\'Appui et d\'Accompagnement des Parents)',
+      type: 'public',
+      themes: ['parentalite', 'qpv', 'famille'],
+      regions: ['national'],
+      amount_min: 3000, amount_max: 20000, amount_label: '3 000 € — 20 000 €',
+      deadline: '2026-04-30',
+      open_date: '2026-02-01',
+      url: 'https://www.caf.fr',
+      description: "Soutien aux actions d'accompagnement de la parentalité, dialogue parents-école, pairs-aidance entre parents.",
+      criteria: ["Convention REAAP", "Action collective avec parents"],
+      pieces: ["Dossier CAF", "Budget", "Calendrier"],
+      uvpt_score: 90,
+      uvpt_match: "Très haut — Les Boussoles est exactement ça"
+    },
+    {
+      id: 'institut-france-2026',
+      title: 'AAP Académie des Sciences Morales et Politiques',
+      funder: 'Institut de France',
+      type: 'prive',
+      themes: ['citoyennete', 'democratie', 'education'],
+      regions: ['national'],
+      amount_min: 5000, amount_max: 25000, amount_label: '5 000 € — 25 000 €',
+      deadline: '2026-07-01',
+      open_date: '2026-04-01',
+      url: 'https://www.asmp.fr',
+      description: "Soutien aux projets favorisant la transmission des valeurs républicaines et la formation civique des jeunes.",
+      criteria: ["Projet à caractère éducatif et civique", "Évaluation rigoureuse"],
+      pieces: ["Dossier", "Budget", "Lettres de soutien"],
+      uvpt_score: 87,
+      uvpt_match: "Très haut — Les Pro'metteurs au Sénat fit parfaitement"
+    },
+    {
+      id: 'fdj-2026',
+      title: 'Mission Sociétale FDJ 2026',
+      funder: 'Fondation FDJ',
+      type: 'prive',
+      themes: ['insertion', 'jeunesse', 'sport', 'qpv'],
+      regions: ['national'],
+      amount_min: 5000, amount_max: 50000, amount_label: '5 000 € — 50 000 €',
+      deadline: '2026-06-30',
+      open_date: '2026-03-01',
+      url: 'https://www.fdj.fr/groupe/engagements',
+      description: "Insertion sociale et professionnelle par le sport et l'engagement collectif. Priorité QPV.",
+      criteria: ["Asso éligible mécénat", "Impact mesurable"],
+      pieces: ["Dossier", "Budget", "Bilan d'impact N-1"],
+      uvpt_score: 70,
+      uvpt_match: "Moyen — il faudrait un angle sport ou collectif fort"
+    },
+    {
+      id: 'erasmus-jeunesse-2026',
+      title: 'Erasmus+ Jeunesse 2026 — Participation des jeunes',
+      funder: 'Agence Erasmus+ France Jeunesse',
+      type: 'public',
+      themes: ['jeunesse', 'europe', 'citoyennete', 'mobilite'],
+      regions: ['national'],
+      amount_min: 10000, amount_max: 70000, amount_label: '10 000 € — 70 000 €',
+      deadline: '2026-10-01',
+      open_date: '2026-07-01',
+      url: 'https://www.erasmusplus-jeunesse.fr',
+      description: "Activités de participation des jeunes : démocratie, dialogue avec les décideurs, échanges de jeunes en Europe.",
+      criteria: ["13-30 ans", "Dimension européenne ou inclusive"],
+      pieces: ["Formulaire OID", "Budget Erasmus", "Plan d'activités"],
+      uvpt_score: 82,
+      uvpt_match: "Haut — Pro'metteurs avec dimension européenne possible"
+    },
+    {
+      id: 'bpi-quartiers',
+      title: 'Quartiers Productifs — Bpifrance / ANCT',
+      funder: 'ANCT × Bpifrance',
+      type: 'public',
+      themes: ['qpv', 'insertion', 'entrepreneuriat'],
+      regions: ['national'],
+      amount_min: 20000, amount_max: 100000, amount_label: '20 000 € — 100 000 €',
+      deadline: '2026-06-15',
+      open_date: '2026-03-15',
+      url: 'https://www.anct.gouv.fr',
+      description: "Renforcement de l'écosystème entrepreneurial et de l'insertion économique en QPV.",
+      criteria: ["Action en QPV", "Cofinancement collectivité"],
+      pieces: ["Dossier ANCT", "Budget", "Lettres de soutien collectivités"],
+      uvpt_score: 65,
+      uvpt_match: "Moyen — angle insertion à creuser, pas le cœur d'UVPT"
+    },
+    {
+      id: 'orange-solidarite',
+      title: 'Solidarité Numérique 2026',
+      funder: 'Fondation Orange',
+      type: 'prive',
+      themes: ['numerique', 'jeunesse', 'inclusion'],
+      regions: ['national'],
+      amount_min: 5000, amount_max: 40000, amount_label: '5 000 € — 40 000 €',
+      deadline: '2026-05-20',
+      open_date: '2026-02-20',
+      url: 'https://www.fondationorange.com',
+      description: "Inclusion numérique des publics fragiles, éducation aux médias, lutte contre la fracture numérique.",
+      criteria: ["Action numérique structurée", "Impact mesurable"],
+      pieces: ["Dossier", "Budget", "Plan d'évaluation"],
+      uvpt_score: 60,
+      uvpt_match: "Faible — pas dans le cœur de mission, sauf à créer un volet numérique"
+    },
+    {
+      id: 'casden-citoyennete',
+      title: 'AAP Citoyenneté 2026',
+      funder: 'Fondation CASDEN',
+      type: 'prive',
+      themes: ['citoyennete', 'education', 'voie-pro'],
+      regions: ['national'],
+      amount_min: 3000, amount_max: 15000, amount_label: '3 000 € — 15 000 €',
+      deadline: '2026-05-31',
+      open_date: '2026-03-01',
+      url: 'https://fondation.casden.fr',
+      description: "Soutien aux actions éducatives qui développent l'engagement citoyen, particulièrement en milieu scolaire.",
+      criteria: ["Lien avec l'Éducation nationale apprécié", "Asso ou établissement scolaire"],
+      pieces: ["Dossier court", "Budget", "Lettre de soutien EN"],
+      uvpt_score: 86,
+      uvpt_match: "Très haut — match parfait Pro'metteurs"
+    },
+    {
+      id: 'engie-territoires',
+      title: 'Fondation ENGIE — Cohésion sociale',
+      funder: 'Fondation ENGIE',
+      type: 'prive',
+      themes: ['insertion', 'jeunesse', 'qpv'],
+      regions: ['national'],
+      amount_min: 10000, amount_max: 60000, amount_label: '10 000 € — 60 000 €',
+      deadline: '2026-09-15',
+      open_date: '2026-06-01',
+      url: 'https://www.fondation-engie.com',
+      description: "Cohésion sociale, lutte contre la précarité et insertion des jeunes éloignés de l'emploi.",
+      criteria: ["Asso reconnue d'IG ou éligible mécénat", "Public en situation de précarité"],
+      pieces: ["Dossier", "Budget", "Bilan d'activités"],
+      uvpt_score: 72,
+      uvpt_match: "Bon — angle insertion par la voie pro"
+    },
+    {
+      id: 'pv-quartiers-ete',
+      title: 'Quartiers d\'Été 2026',
+      funder: 'ANCT — Politique de la Ville',
+      type: 'public',
+      themes: ['qpv', 'jeunesse', 'ete'],
+      regions: ['national'],
+      amount_min: 2000, amount_max: 20000, amount_label: '2 000 € — 20 000 €',
+      deadline: '2026-04-15',
+      open_date: '2026-02-15',
+      url: 'https://www.anct.gouv.fr/quartiers-d-ete',
+      description: "Animation des QPV pendant l'été, soutien aux familles non-partants en vacances, activités jeunesse.",
+      criteria: ["Action estivale en QPV", "Validation préfectorale"],
+      pieces: ["Fiche action", "Budget", "Calendrier été"],
+      uvpt_score: 75,
+      uvpt_match: "Bon — possibilité d'un volet été pour Les Boussoles"
+    },
+    {
+      id: 'guadeloupe-jeunesse',
+      title: 'AAP Jeunesse Outre-Mer 2026',
+      funder: 'Préfecture de Guadeloupe — DJSCS',
+      type: 'public',
+      themes: ['jeunesse', 'outre-mer', 'insertion'],
+      regions: ['guadeloupe'],
+      amount_min: 5000, amount_max: 30000, amount_label: '5 000 € — 30 000 €',
+      deadline: '2026-06-01',
+      open_date: '2026-03-15',
+      url: 'https://www.guadeloupe.gouv.fr',
+      description: "Soutien aux actions jeunesse, sportives et éducatives en Guadeloupe, avec attention aux quartiers prioritaires.",
+      criteria: ["Action en Guadeloupe", "Asso locale ou implantée"],
+      pieces: ["Dossier préfecture", "Budget", "Justificatif d'implantation locale"],
+      uvpt_score: 84,
+      uvpt_match: "Très haut — UVPT présent en Guadeloupe, à activer"
+    },
+    {
+      id: 'crsa-paca',
+      title: 'AAP Région Sud — Engagement Jeunes',
+      funder: 'Région Provence-Alpes-Côte d\'Azur',
+      type: 'public',
+      themes: ['jeunesse', 'citoyennete', 'voie-pro'],
+      regions: ['paca'],
+      amount_min: 3000, amount_max: 25000, amount_label: '3 000 € — 25 000 €',
+      deadline: '2026-05-30',
+      open_date: '2026-03-01',
+      url: 'https://www.maregionsud.fr',
+      description: "Engagement citoyen, parcours d'insertion, accompagnement scolaire en région Sud.",
+      criteria: ["Action en PACA", "Public 15-25 ans"],
+      pieces: ["Dossier région", "Budget", "Lettres partenaires locaux"],
+      uvpt_score: 80,
+      uvpt_match: "Haut — UVPT actif en PACA"
+    },
+    {
+      id: 'occitanie-emploi',
+      title: 'AAP Occitanie — Insertion et formation',
+      funder: 'Région Occitanie',
+      type: 'public',
+      themes: ['insertion', 'formation', 'voie-pro'],
+      regions: ['occitanie'],
+      amount_min: 5000, amount_max: 40000, amount_label: '5 000 € — 40 000 €',
+      deadline: '2026-07-01',
+      open_date: '2026-04-01',
+      url: 'https://www.laregion.fr',
+      description: "Soutien aux projets d'insertion professionnelle, lutte contre le décrochage, accompagnement des publics éloignés.",
+      criteria: ["Action en Occitanie", "Cofinancement requis"],
+      pieces: ["Dossier région", "Budget", "Plan de cofinancement"],
+      uvpt_score: 78,
+      uvpt_match: "Haut — UVPT actif en Occitanie"
+    },
+    {
+      id: 'fondation-edf',
+      title: 'Solidarité EDF 2026',
+      funder: 'Fondation EDF',
+      type: 'prive',
+      themes: ['insertion', 'jeunesse', 'inclusion'],
+      regions: ['national'],
+      amount_min: 5000, amount_max: 40000, amount_label: '5 000 € — 40 000 €',
+      deadline: '2026-06-30',
+      open_date: '2026-03-01',
+      url: 'https://fondation.edf.com',
+      description: "Lutte contre les exclusions, soutien aux jeunes éloignés de l'emploi, accompagnement vers l'autonomie.",
+      criteria: ["Asso reconnue d'IG", "Impact démontrable"],
+      pieces: ["Dossier", "Budget", "Bilan"],
+      uvpt_score: 68,
+      uvpt_match: "Bon — angle insertion à mettre en avant"
+    },
+    {
+      id: 'mildeca-prevention',
+      title: 'AAP Prévention MILDECA 2026',
+      funder: 'MILDECA (Mission interministérielle)',
+      type: 'public',
+      themes: ['prevention', 'jeunesse', 'sante'],
+      regions: ['national'],
+      amount_min: 5000, amount_max: 30000, amount_label: '5 000 € — 30 000 €',
+      deadline: '2026-05-15',
+      open_date: '2026-02-15',
+      url: 'https://www.drogues.gouv.fr',
+      description: "Prévention des conduites addictives chez les jeunes, particulièrement en milieu scolaire et périscolaire.",
+      criteria: ["Action de prévention structurée", "Public 12-25 ans"],
+      pieces: ["Dossier MILDECA", "Budget", "Plan d'évaluation"],
+      uvpt_score: 55,
+      uvpt_match: "Moyen — angle prévention dans les lycées pros possible"
+    },
+    {
+      id: 'pollens-bordeaux',
+      title: 'Fondation Pollens — Émancipation',
+      funder: 'Fondation Pollens',
+      type: 'prive',
+      themes: ['emancipation', 'jeunesse', 'femmes'],
+      regions: ['national'],
+      amount_min: 3000, amount_max: 20000, amount_label: '3 000 € — 20 000 €',
+      deadline: '2026-06-15',
+      open_date: '2026-03-15',
+      url: 'https://www.fondationpollens.org',
+      description: "Soutien à l'émancipation des femmes, particulièrement issues de milieux populaires.",
+      criteria: ["Public féminin", "Démarche d'émancipation"],
+      pieces: ["Dossier court", "Budget", "Témoignages bénéficiaires"],
+      uvpt_score: 88,
+      uvpt_match: "Très haut — Les Boussoles est pile dedans"
+    }
+  ];
+
+  const THEMES = [
+    { id: 'voie-pro', label: 'Voie pro' },
+    { id: 'education', label: 'Éducation' },
+    { id: 'jeunesse', label: 'Jeunesse' },
+    { id: 'qpv', label: 'QPV' },
+    { id: 'insertion', label: 'Insertion' },
+    { id: 'parentalite', label: 'Parentalité' },
+    { id: 'citoyennete', label: 'Citoyenneté' },
+    { id: 'decrochage', label: 'Décrochage' },
+    { id: 'handicap', label: 'Handicap' },
+    { id: 'orientation', label: 'Orientation' },
+    { id: 'mentorat', label: 'Mentorat' },
+    { id: 'democratie', label: 'Démocratie' },
+    { id: 'famille', label: 'Famille' },
+    { id: 'mobilite', label: 'Mobilité' },
+    { id: 'europe', label: 'Europe' },
+    { id: 'numerique', label: 'Numérique' },
+    { id: 'sport', label: 'Sport' },
+    { id: 'sante', label: 'Santé' },
+    { id: 'prevention', label: 'Prévention' },
+    { id: 'femmes', label: 'Femmes' },
+    { id: 'emancipation', label: 'Émancipation' },
+    { id: 'outre-mer', label: 'Outre-mer' },
+    { id: 'entrepreneuriat', label: 'Entrepreneuriat' },
+    { id: 'inclusion', label: 'Inclusion' },
+    { id: 'formation', label: 'Formation' },
+    { id: 'ete', label: 'Été' }
+  ];
+
+  const REGIONS = [
+    { id: 'national', label: 'National' },
+    { id: 'ile-de-france', label: 'Île-de-France' },
+    { id: 'paca', label: 'PACA' },
+    { id: 'occitanie', label: 'Occitanie' },
+    { id: 'guadeloupe', label: 'Guadeloupe' }
+  ];
+
+  // ================== STORAGE ==================
+  async function getStored(key, fallback) {
+    try {
+      const r = await window.storage.get(key);
+      return r ? JSON.parse(r.value) : fallback;
+    } catch { return fallback; }
+  }
+  async function setStored(key, value) {
+    try { await window.storage.set(key, JSON.stringify(value)); } catch {}
+  }
+
+  // ================== FORMAT HELPERS ==================
+  const fmtDate = (d) => new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+  const daysUntil = (d) => Math.ceil((new Date(d) - new Date()) / (1000 * 60 * 60 * 24));
+  const dayClass = (d) => {
+    const n = daysUntil(d);
+    if (n < 0) return 'passed';
+    if (n <= 14) return 'urgent';
+    if (n <= 45) return 'soon';
+    return 'normal';
+  };
+  const dayLabel = (d) => {
+    const n = daysUntil(d);
+    if (n < 0) return `${Math.abs(n)} j passés`;
+    if (n === 0) return "Aujourd'hui";
+    return `J−${n}`;
+  };
+
+  // ================== APP ==================
+  function App() {
+    const [search, setSearch] = useState('');
+    const [activeThemes, setActiveThemes] = useState([]);
+    const [activeRegion, setActiveRegion] = useState('all');
+    const [activeType, setActiveType] = useState('all');
+    const [activeStatusFilter, setActiveStatusFilter] = useState('all');
+    const [sortBy, setSortBy] = useState('score');
+    const [selectedAap, setSelectedAap] = useState(null);
+    const [statuses, setStatuses] = useState({});
+    const [aiAnalysis, setAiAnalysis] = useState({});
+    const [loadingAi, setLoadingAi] = useState(false);
+    const [checklist, setChecklist] = useState({});
+
+    useEffect(() => {
+      getStored('uvpt:statuses', {}).then(setStatuses);
+      getStored('uvpt:checklist', {}).then(setChecklist);
+      getStored('uvpt:ai-cache', {}).then(setAiAnalysis);
+    }, []);
+
+    const updateStatus = (id, st) => {
+      const next = { ...statuses, [id]: st };
+      setStatuses(next);
+      setStored('uvpt:statuses', next);
+    };
+    const updateChecklist = (id, idx, val) => {
+      const next = { ...checklist, [`${id}:${idx}`]: val };
+      setChecklist(next);
+      setStored('uvpt:checklist', next);
+    };
+
+    // ============ FILTERED + SORTED ============
+    const filtered = useMemo(() => {
+      let r = AAP_DATA.filter(a => {
+        if (search) {
+          const q = search.toLowerCase();
+          if (!a.title.toLowerCase().includes(q) &&
+              !a.funder.toLowerCase().includes(q) &&
+              !a.description.toLowerCase().includes(q)) return false;
+        }
+        if (activeThemes.length && !activeThemes.some(t => a.themes.includes(t))) return false;
+        if (activeRegion !== 'all' && !a.regions.includes(activeRegion)) return false;
+        if (activeType !== 'all' && a.type !== activeType) return false;
+        if (activeStatusFilter !== 'all') {
+          const s = statuses[a.id] || 'todo';
+          if (activeStatusFilter === 'todo' && s !== 'todo') return false;
+          if (activeStatusFilter !== 'todo' && s !== activeStatusFilter) return false;
+        }
+        return true;
+      });
+      r.sort((a, b) => {
+        if (sortBy === 'score') return b.uvpt_score - a.uvpt_score;
+        if (sortBy === 'deadline') return new Date(a.deadline) - new Date(b.deadline);
+        if (sortBy === 'amount') return b.amount_max - a.amount_max;
+        return 0;
+      });
+      return r;
+    }, [search, activeThemes, activeRegion, activeType, activeStatusFilter, sortBy, statuses]);
+
+    // ============ STATS ============
+    const stats = useMemo(() => {
+      const open = AAP_DATA.filter(a => daysUntil(a.deadline) >= 0).length;
+      const urgent = AAP_DATA.filter(a => { const d = daysUntil(a.deadline); return d >= 0 && d <= 14; }).length;
+      const inProgress = Object.values(statuses).filter(s => s === 'progress').length;
+      const submitted = Object.values(statuses).filter(s => s === 'submitted').length;
+      return { open, urgent, inProgress, submitted };
+    }, [statuses]);
+
+    const themeCounts = useMemo(() => {
+      const c = {};
+      AAP_DATA.forEach(a => a.themes.forEach(t => { c[t] = (c[t] || 0) + 1; }));
+      return c;
+    }, []);
+
+    const toggleTheme = (t) => {
+      setActiveThemes(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
+    };
+
+    // ============ AI ANALYSIS ============
+    const runAiAnalysis = async (aap) => {
+      if (aiAnalysis[aap.id]) return;
+      setLoadingAi(true);
+      try {
+        const prompt = `Tu es expert en levée de fonds pour associations éducatives. Voici le contexte :
+
+${UVPT_CONTEXT}
+
+APPEL À PROJET ANALYSÉ :
+- Titre : ${aap.title}
+- Financeur : ${aap.funder}
+- Type : ${aap.type}
+- Description : ${aap.description}
+- Montant : ${aap.amount_label}
+- Critères : ${aap.criteria.join(' / ')}
+- Thématiques : ${aap.themes.join(', ')}
+
+Réponds STRICTEMENT en JSON valide (pas de markdown, pas de fences) avec cette structure :
+{
+  "funderAnalysis": "Analyse du financeur en 3-4 phrases : qui ils sont, leurs dadas, ce qui les fait vibrer, projets qu'ils ont déjà soutenus si tu connais, signaux à envoyer.",
+  "angles": [
+    {"title": "Angle 1 court", "desc": "Description courte 2 phrases."},
+    {"title": "Angle 2 court", "desc": "Description courte 2 phrases."},
+    {"title": "Angle 3 court", "desc": "Description courte 2 phrases."}
+  ],
+  "pitch": "Brouillon de pitch de 4-5 phrases en français, ton percutant, qui présente UVPT et le projet sous l'angle le plus aligné avec ce financeur. Utilise « guillemets français ».",
+  "redFlags": "Points de vigilance ou risques en 2 phrases."
+}`;
+
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 1500,
+            messages: [{ role: "user", content: prompt }]
+          })
+        });
+        const data = await response.json();
+        const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+        const cleaned = text.replace(/```json|```/g, '').trim();
+        const parsed = JSON.parse(cleaned);
+        const next = { ...aiAnalysis, [aap.id]: parsed };
+        setAiAnalysis(next);
+        setStored('uvpt:ai-cache', next);
+      } catch (e) {
+        console.error('AI error:', e);
+        const fallback = {
+          funderAnalysis: "L'analyse IA n'a pas pu se charger. Vérifie ta connexion ou réessaie. Tu peux aussi te baser sur le score d'adéquation et les critères listés.",
+          angles: [{ title: "Mode dégradé", desc: "Cliquer 'Relancer l'analyse' pour réessayer." }],
+          pitch: "Pitch indisponible — réessaie l'analyse.",
+          redFlags: "Vérifie la connexion API."
+        };
+        setAiAnalysis(prev => ({ ...prev, [aap.id]: fallback }));
+      }
+      setLoadingAi(false);
+    };
+
+    useEffect(() => {
+      if (selectedAap && !aiAnalysis[selectedAap.id]) {
+        runAiAnalysis(selectedAap);
+      }
+    }, [selectedAap]);
+
+    return h('div', { className: 'app' },
+      // ============ SIDEBAR ============
+      h('aside', { className: 'sidebar' },
+        h('div', { className: 'brand' }, 'UVPT', h('span', null, '.')),
+        h('div', { className: 'brand-sub' }, 'Veille AAP — édition 2026'),
+
+        h('div', { className: 'stat-bar' },
+          h('div', { className: 'stat' },
+            h('div', { className: 'stat-num' }, stats.open),
+            h('div', { className: 'stat-label' }, 'Ouverts')),
+          h('div', { className: 'stat' },
+            h('div', { className: `stat-num ${stats.urgent ? 'urgent' : ''}` }, stats.urgent),
+            h('div', { className: 'stat-label' }, 'Urgents (<14j)')),
+          h('div', { className: 'stat' },
+            h('div', { className: 'stat-num' }, stats.inProgress),
+            h('div', { className: 'stat-label' }, 'En cours')),
+          h('div', { className: 'stat' },
+            h('div', { className: 'stat-num' }, stats.submitted),
+            h('div', { className: 'stat-label' }, 'Soumis'))
+        ),
+
+        h('div', { className: 'filter-group' },
+          h('div', { className: 'filter-title' }, 'Recherche'),
+          h('input', {
+            className: 'search-input',
+            placeholder: 'Mot-clé, financeur…',
+            value: search,
+            onChange: e => setSearch(e.target.value)
+          })),
+
+        h('div', { className: 'filter-group' },
+          h('div', { className: 'filter-title' }, 'Type'),
+          h('div', { className: 'radio-list' },
+            ['all', 'public', 'prive'].map(t =>
+              h('label', { key: t, className: 'radio-item' },
+                h('input', { type: 'radio', name: 'type', checked: activeType === t, onChange: () => setActiveType(t) }),
+                t === 'all' ? 'Tous' : t === 'public' ? 'Public' : 'Privé',
+                h('span', { className: 'radio-count' },
+                  t === 'all' ? AAP_DATA.length : AAP_DATA.filter(a => a.type === t).length))
+            ))),
+
+        h('div', { className: 'filter-group' },
+          h('div', { className: 'filter-title' }, 'Région'),
+          h('div', { className: 'radio-list' },
+            [{ id: 'all', label: 'Toutes' }, ...REGIONS].map(r =>
+              h('label', { key: r.id, className: 'radio-item' },
+                h('input', { type: 'radio', name: 'region', checked: activeRegion === r.id, onChange: () => setActiveRegion(r.id) }),
+                r.label,
+                h('span', { className: 'radio-count' },
+                  r.id === 'all' ? AAP_DATA.length : AAP_DATA.filter(a => a.regions.includes(r.id)).length))
+            ))),
+
+        h('div', { className: 'filter-group' },
+          h('div', { className: 'filter-title' }, 'Statut'),
+          h('div', { className: 'radio-list' },
+            [
+              { id: 'all', l: 'Tous' },
+              { id: 'todo', l: 'À faire' },
+              { id: 'progress', l: 'En cours' },
+              { id: 'submitted', l: 'Soumis' },
+              { id: 'won', l: 'Gagné' },
+              { id: 'rejected', l: 'Refusé' }
+            ].map(s =>
+              h('label', { key: s.id, className: 'radio-item' },
+                h('input', { type: 'radio', name: 'status', checked: activeStatusFilter === s.id, onChange: () => setActiveStatusFilter(s.id) }),
+                s.l)))),
+
+        h('div', { className: 'filter-group' },
+          h('div', { className: 'filter-title' },
+            h('span', null, 'Thématiques'),
+            activeThemes.length ? h('button', { onClick: () => setActiveThemes([]) }, 'Effacer') : null),
+          h('div', { className: 'chip-list' },
+            THEMES.filter(t => themeCounts[t.id]).map(t =>
+              h('button', {
+                key: t.id,
+                className: `chip ${activeThemes.includes(t.id) ? 'active' : ''}`,
+                onClick: () => toggleTheme(t.id)
+              }, `${t.label} · ${themeCounts[t.id] || 0}`))))
+      ),
+
+      // ============ MAIN ============
+      h('main', { className: 'main' },
+        h('div', { className: 'topbar' },
+          h('h1', { className: 'page-title' }, 'Tableau de veille'),
+          h('div', { className: 'topbar-actions' },
+            h('button', { className: 'btn', onClick: () => window.print() }, 'Imprimer'))
+        ),
+        h('div', { className: 'meta-line' },
+          h('span', null, `${filtered.length} appel${filtered.length > 1 ? 's' : ''} affiché${filtered.length > 1 ? 's' : ''}`),
+          h('span', { className: 'dot' }),
+          h('span', null, 'Trier par'),
+          h('select', {
+            className: 'sort-select',
+            value: sortBy,
+            onChange: e => setSortBy(e.target.value)
+          },
+            h('option', { value: 'score' }, 'Score UVPT'),
+            h('option', { value: 'deadline' }, 'Échéance'),
+            h('option', { value: 'amount' }, 'Montant'))),
+
+        // ============ AAP LIST ============
+        h('div', { className: 'aap-list' },
+          filtered.length === 0
+            ? h('div', { className: 'empty-state' },
+                h('h3', null, 'Aucun appel à projet ne correspond'),
+                h('p', null, 'Élargis tes filtres ou efface ta recherche.'))
+            : filtered.map(a => {
+                const st = statuses[a.id] || 'todo';
+                const scoreClass = a.uvpt_score >= 85 ? 'high' : a.uvpt_score >= 70 ? 'med' : 'low';
+                return h('div', {
+                  key: a.id,
+                  className: `aap-row ${selectedAap?.id === a.id ? 'selected' : ''}`,
+                  onClick: () => setSelectedAap(a)
+                },
+                  h('div', null,
+                    h('div', { className: `aap-score ${scoreClass}` }, a.uvpt_score),
+                    h('div', { className: 'aap-score-label' }, 'Score')),
+                  h('div', null,
+                    h('div', { className: 'aap-headline' }, a.title),
+                    h('div', { className: 'aap-funder' }, a.funder),
+                    h('div', { className: 'aap-tags' },
+                      h('span', { className: `tag type-${a.type}` }, a.type === 'public' ? 'Public' : 'Privé'),
+                      ...a.themes.slice(0, 4).map(t =>
+                        h('span', { key: t, className: 'tag' }, THEMES.find(x => x.id === t)?.label || t)))),
+                  h('div', { className: 'col-funding' },
+                    h('div', { className: 'aap-funding' }, a.amount_label),
+                    h('div', { className: 'aap-funding-label' }, 'Subvention')),
+                  h('div', null,
+                    h('div', { className: 'aap-deadline' }, fmtDate(a.deadline)),
+                    h('div', { className: 'aap-deadline-label' }, 'Clôture'),
+                    h('span', { className: `aap-days ${dayClass(a.deadline)}` }, dayLabel(a.deadline))),
+                  h('div', { className: 'col-status aap-status-cell' },
+                    h('span', { className: `status-pill status-${st}` },
+                      st === 'todo' ? 'À faire' :
+                      st === 'progress' ? 'En cours' :
+                      st === 'submitted' ? 'Soumis' :
+                      st === 'won' ? 'Gagné' : 'Refusé'))
+                );
+              }))
+      ),
+
+      // ============ DETAIL DRAWER ============
+      h('div', {
+        className: `drawer-backdrop ${selectedAap ? 'open' : ''}`,
+        onClick: () => setSelectedAap(null)
+      }),
+      h('div', { className: `drawer ${selectedAap ? 'open' : ''}` },
+        selectedAap && (() => {
+          const a = selectedAap;
+          const st = statuses[a.id] || 'todo';
+          const ai = aiAnalysis[a.id];
+          return h(React.Fragment, null,
+            h('div', { className: 'drawer-header' },
+              h('button', { className: 'drawer-close', onClick: () => setSelectedAap(null) }, '×'),
+              h('div', { className: 'drawer-eyebrow' },
+                a.type === 'public' ? 'Financement public' : 'Mécénat privé',
+                ' · Score d\'adéquation UVPT : ',
+                h('strong', null, a.uvpt_score, '/100')),
+              h('h2', { className: 'drawer-title' }, a.title),
+              h('div', { className: 'drawer-funder' }, h('strong', null, a.funder))),
+
+            h('div', { className: 'drawer-body' },
+              h('div', { className: 'key-grid' },
+                h('div', { className: 'key-item' },
+                  h('div', { className: 'k-label' }, 'Subvention'),
+                  h('div', { className: 'k-value' }, a.amount_label)),
+                h('div', { className: 'key-item' },
+                  h('div', { className: 'k-label' }, 'Clôture'),
+                  h('div', { className: 'k-value' }, fmtDate(a.deadline), ' · ',
+                    h('span', { className: `aap-days ${dayClass(a.deadline)}`, style: { fontSize: '11px' } },
+                      dayLabel(a.deadline)))),
+                h('div', { className: 'key-item' },
+                  h('div', { className: 'k-label' }, 'Ouverture'),
+                  h('div', { className: 'k-value' }, fmtDate(a.open_date))),
+                h('div', { className: 'key-item' },
+                  h('div', { className: 'k-label' }, 'Territoire'),
+                  h('div', { className: 'k-value' }, a.regions.map(r => REGIONS.find(x => x.id === r)?.label || r).join(', '))),
+                h('div', { className: 'key-item full' },
+                  h('div', { className: 'k-label' }, 'Statut UVPT'),
+                  h('div', null,
+                    ['todo', 'progress', 'submitted', 'won', 'rejected'].map(s =>
+                      h('button', {
+                        key: s,
+                        className: `status-pill status-${s}`,
+                        style: { marginRight: '6px', cursor: 'pointer', opacity: st === s ? 1 : 0.45 },
+                        onClick: () => updateStatus(a.id, s)
+                      },
+                        s === 'todo' ? 'À faire' :
+                        s === 'progress' ? 'En cours' :
+                        s === 'submitted' ? 'Soumis' :
+                        s === 'won' ? 'Gagné' : 'Refusé'))))),
+
+              h('div', { className: 'section' },
+                h('div', { className: 'section-title' },
+                  h('span', { className: 'num' }, '01'), 'Description'),
+                h('div', { className: 'section-body' }, h('p', null, a.description))),
+
+              h('div', { className: 'section' },
+                h('div', { className: 'section-title' },
+                  h('span', { className: 'num' }, '02'), 'Critères d\'éligibilité'),
+                h('div', { className: 'section-body' },
+                  h('ul', null, a.criteria.map((c, i) => h('li', { key: i }, c))))),
+
+              h('div', { className: 'section' },
+                h('div', { className: 'section-title' },
+                  h('span', { className: 'num' }, '03'), 'Pourquoi ça matche pour UVPT'),
+                h('div', { className: 'section-body' }, h('p', null, a.uvpt_match))),
+
+              // ============ AI BLOCK : FUNDER ============
+              h('div', { className: 'section' },
+                h('div', { className: 'section-title' },
+                  h('span', { className: 'num' }, '04'), 'Analyse du financeur'),
+                h('div', { className: 'ai-block' },
+                  h('span', { className: 'ai-block-tag' }, 'IA'),
+                  ai
+                    ? h('div', { className: 'section-body', style: { margin: 0 } },
+                        h('p', null, ai.funderAnalysis))
+                    : h('div', { className: 'ai-loading' }, 'Analyse en cours…'))),
+
+              // ============ AI BLOCK : ANGLES ============
+              h('div', { className: 'section' },
+                h('div', { className: 'section-title' },
+                  h('span', { className: 'num' }, '05'), 'Angles d\'attaque suggérés'),
+                ai
+                  ? h('div', { className: 'angle-list' },
+                      ai.angles.map((angle, i) =>
+                        h('div', { key: i, className: 'angle-item' },
+                          h('div', { className: 'angle-title' },
+                            h('span', { className: 'angle-num' }, `${i + 1}.`), angle.title),
+                          h('div', { className: 'angle-desc' }, angle.desc))))
+                  : h('div', { className: 'ai-block' },
+                      h('div', { className: 'ai-loading' }, 'Génération des angles…'))),
+
+              // ============ AI BLOCK : PITCH ============
+              h('div', { className: 'section' },
+                h('div', { className: 'section-title' },
+                  h('span', { className: 'num' }, '06'), 'Brouillon de pitch'),
+                ai
+                  ? h('div', null,
+                      h('div', { className: 'pitch-box' },
+                        h('div', { className: 'pitch-box-content' }, ai.pitch)),
+                      h('button', {
+                        className: 'btn',
+                        onClick: () => navigator.clipboard.writeText(ai.pitch)
+                      }, 'Copier le pitch'))
+                  : h('div', { className: 'ai-block' },
+                      h('div', { className: 'ai-loading' }, 'Rédaction du pitch…'))),
+
+              // ============ CHECKLIST ============
+              h('div', { className: 'section' },
+                h('div', { className: 'section-title' },
+                  h('span', { className: 'num' }, '07'), 'Pièces à fournir'),
+                h('ul', { className: 'checklist' },
+                  a.pieces.map((p, i) =>
+                    h('li', { key: i },
+                      h('input', {
+                        type: 'checkbox',
+                        checked: !!checklist[`${a.id}:${i}`],
+                        onChange: e => updateChecklist(a.id, i, e.target.checked)
+                      }),
+                      h('span', null, p))))),
+
+              // ============ AI BLOCK : RED FLAGS ============
+              ai && ai.redFlags ? h('div', { className: 'section' },
+                h('div', { className: 'section-title' },
+                  h('span', { className: 'num' }, '08'), 'Points de vigilance'),
+                h('div', { className: 'ai-block' },
+                  h('span', { className: 'ai-block-tag' }, 'IA'),
+                  h('div', { className: 'section-body', style: { margin: 0 } },
+                    h('p', null, ai.redFlags)))) : null,
+
+              h('div', { className: 'drawer-actions' },
+                h('button', { className: 'btn primary', onClick: () => window.open(a.url, '_blank') }, 'Page officielle ↗'),
+                ai
+                  ? h('button', {
+                      className: 'btn',
+                      onClick: () => {
+                        const next = { ...aiAnalysis };
+                        delete next[a.id];
+                        setAiAnalysis(next);
+                        setStored('uvpt:ai-cache', next);
+                        runAiAnalysis(a);
+                      }
+                    }, 'Régénérer l\'analyse')
+                  : null,
+                h('button', {
+                  className: 'btn accent',
+                  onClick: () => updateStatus(a.id, st === 'progress' ? 'todo' : 'progress')
+                }, st === 'progress' ? 'Mettre en pause' : 'Démarrer la candidature'))
+            ));
+        })()
+      )
+    );
+  }
+
+  createRoot(document.getElementById('root')).render(h(App));
+</script>
