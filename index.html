@@ -755,6 +755,38 @@
   }
   .api-status:hover { background: var(--ink); color: var(--paper); }
 
+  /* ============ AI DISCOVERY ============ */
+  .discovery-status {
+    background: var(--paper-warm);
+    border: 1px solid var(--accent);
+    border-left: 3px solid var(--accent);
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    border-radius: 2px;
+    animation: slideDown .3s ease;
+  }
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+  .ai-badge {
+    display: inline-block;
+    margin-left: 8px;
+    font-size: 9px;
+    padding: 2px 7px;
+    background: var(--accent);
+    color: var(--paper);
+    border-radius: 100px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 600;
+    font-family: 'Inter Tight', sans-serif;
+    vertical-align: middle;
+    position: relative;
+    top: -2px;
+  }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn.accent:disabled:hover { background: var(--accent); border-color: var(--accent); }
+
   /* responsive minimum */
   @media (max-width: 1100px) {
     .app { grid-template-columns: 1fr; }
@@ -1218,6 +1250,9 @@ Thématiques d'expertise : voie pro, égalité des chances, jeunesse QPV, citoye
     const [activeType, setActiveType] = useState('all');
     const [activeStatusFilter, setActiveStatusFilter] = useState('all');
     const [sortBy, setSortBy] = useState('score');
+    const [discoveredAaps, setDiscoveredAaps] = useState([]);
+    const [discoveryLoading, setDiscoveryLoading] = useState(false);
+    const [discoveryStatus, setDiscoveryStatus] = useState('');
     const [selectedAap, setSelectedAap] = useState(null);
     const [statuses, setStatuses] = useState({});
     const [aiAnalysis, setAiAnalysis] = useState({});
@@ -1229,6 +1264,7 @@ Thématiques d'expertise : voie pro, égalité des chances, jeunesse QPV, citoye
       getStored('uvpt:statuses', {}).then(setStatuses);
       getStored('uvpt:checklist', {}).then(setChecklist);
       getStored('uvpt:ai-cache', {}).then(setAiAnalysis);
+      getStored('uvpt:discovered-aaps', []).then(setDiscoveredAaps);
     }, []);
 
     const saveApiKey = () => {
@@ -1258,9 +1294,16 @@ Thématiques d'expertise : voie pro, égalité des chances, jeunesse QPV, citoye
       setStored('uvpt:checklist', next);
     };
 
+    // ============ COMBINED DATA (base + discovered) ============
+    const ALL_AAPS = useMemo(() => {
+      const ids = new Set(AAP_DATA.map(a => a.id));
+      const extras = discoveredAaps.filter(a => !ids.has(a.id));
+      return [...AAP_DATA, ...extras];
+    }, [discoveredAaps]);
+
     // ============ FILTERED + SORTED ============
     const filtered = useMemo(() => {
-      let r = AAP_DATA.filter(a => {
+      let r = ALL_AAPS.filter(a => {
         if (search) {
           const q = search.toLowerCase();
           if (!a.title.toLowerCase().includes(q) &&
@@ -1288,25 +1331,132 @@ Thématiques d'expertise : voie pro, égalité des chances, jeunesse QPV, citoye
 
     // ============ STATS ============
     const stats = useMemo(() => {
-      const open = AAP_DATA.filter(a => daysUntil(a.deadline) >= 0).length;
-      const urgent = AAP_DATA.filter(a => { const d = daysUntil(a.deadline); return d >= 0 && d <= 14; }).length;
+      const open = ALL_AAPS.filter(a => daysUntil(a.deadline) >= 0).length;
+      const urgent = ALL_AAPS.filter(a => { const d = daysUntil(a.deadline); return d >= 0 && d <= 14; }).length;
       const inProgress = Object.values(statuses).filter(s => s === 'progress').length;
       const submitted = Object.values(statuses).filter(s => s === 'submitted').length;
       return { open, urgent, inProgress, submitted };
-    }, [statuses]);
+    }, [statuses, ALL_AAPS]);
 
     const themeCounts = useMemo(() => {
       const c = {};
-      AAP_DATA.forEach(a => a.themes.forEach(t => { c[t] = (c[t] || 0) + 1; }));
+      ALL_AAPS.forEach(a => a.themes.forEach(t => { c[t] = (c[t] || 0) + 1; }));
       return c;
-    }, []);
+    }, [ALL_AAPS]);
 
     const toggleTheme = (t) => {
       setActiveThemes(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
     };
 
-    // ============ AI ANALYSIS ============
+    // ============ AI DISCOVERY ============
+    const runDiscovery = async () => {
+      setDiscoveryLoading(true);
+      setDiscoveryStatus('🔍 Claude explore les financeurs publics et privés...');
+      try {
+        const existingTitles = ALL_AAPS.map(a => `${a.title} (${a.funder})`).join(' | ');
+        const prompt = `Tu es expert en levée de fonds pour associations éducatives en France. Voici le contexte :
+
+${UVPT_CONTEXT}
+
+AAP DÉJÀ DANS LA BASE (ne pas redoublonner) :
+${existingTitles}
+
+MISSION : Génère 6 NOUVEAUX appels à projets potentiellement pertinents pour UVPT en 2026, qui ne sont PAS dans la liste ci-dessus. Couvre des financeurs variés : fondations d'entreprise, fondations indépendantes, collectivités territoriales, ministères, agences publiques, programmes européens.
+
+⚠️ IMPORTANT : Pour chaque AAP, tu dois :
+- Soit citer un AAP réel et récurrent (ex. AAP annuels de fondations connues)
+- Soit clairement marquer comme "à vérifier" dans le titre si tu n'es pas certain
+- Donner des montants et délais réalistes (pas inventés)
+- Indiquer une URL de référence (page du financeur, pas une URL d'AAP spécifique si tu n'es pas sûr)
+
+Réponds STRICTEMENT en JSON valide (pas de markdown, pas de fences) avec cette structure :
+{
+  "aaps": [
+    {
+      "id": "ai-XXX",
+      "title": "Titre de l'AAP",
+      "funder": "Nom du financeur",
+      "type": "public ou prive",
+      "themes": ["theme1", "theme2", "theme3"],
+      "regions": ["national" ou "ile-de-france" ou "paca" ou "occitanie" ou "guadeloupe"],
+      "amount_min": 5000,
+      "amount_max": 30000,
+      "amount_label": "5 000 € — 30 000 €",
+      "deadline": "2026-MM-DD",
+      "open_date": "2026-MM-DD",
+      "url": "https://...",
+      "description": "Description en 2-3 phrases",
+      "criteria": ["Critère 1", "Critère 2", "Critère 3"],
+      "pieces": ["Pièce 1", "Pièce 2", "Pièce 3"],
+      "uvpt_score": 75,
+      "uvpt_match": "Pourquoi ça matche pour UVPT, 1-2 phrases"
+    }
+  ]
+}
+
+Thématiques disponibles : voie-pro, education, jeunesse, qpv, insertion, parentalite, citoyennete, decrochage, handicap, orientation, mentorat, democratie, famille, mobilite, europe, numerique, sport, sante, prevention, femmes, emancipation, outre-mer, entrepreneuriat, inclusion, formation, ete.
+
+Génère 6 AAP variés et pertinents. Préfixe les ids par "ai-" suivi d'un slug court. Score 60-95 selon pertinence pour UVPT.`;
+
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+            "anthropic-dangerous-direct-browser-access": "true"
+          },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 4000,
+            messages: [{ role: "user", content: prompt }]
+          })
+        });
+        const data = await response.json();
+        if (data.error) throw new Error(data.error.message || 'Erreur API');
+        const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+        const cleaned = text.replace(/```json|```/g, '').trim();
+        const parsed = JSON.parse(cleaned);
+        const newAaps = (parsed.aaps || []).map(a => ({
+          ...a,
+          id: a.id.startsWith('ai-') ? a.id : `ai-${a.id}`,
+          isAiDiscovered: true
+        }));
+        const merged = [...discoveredAaps];
+        let added = 0;
+        newAaps.forEach(a => {
+          if (!merged.find(x => x.id === a.id) && !AAP_DATA.find(x => x.id === a.id)) {
+            merged.push(a);
+            added++;
+          }
+        });
+        setDiscoveredAaps(merged);
+        setStored('uvpt:discovered-aaps', merged);
+        setDiscoveryStatus(`✓ ${added} nouveaux AAP ajoutés à la base`);
+        setTimeout(() => setDiscoveryStatus(''), 5000);
+      } catch (e) {
+        console.error('Discovery error:', e);
+        setDiscoveryStatus(`✗ Erreur : ${e.message}`);
+        setTimeout(() => setDiscoveryStatus(''), 5000);
+      }
+      setDiscoveryLoading(false);
+    };
+
+    const removeDiscoveredAap = (id) => {
+      const next = discoveredAaps.filter(a => a.id !== id);
+      setDiscoveredAaps(next);
+      setStored('uvpt:discovered-aaps', next);
+      if (selectedAap?.id === id) setSelectedAap(null);
+    };
+
+    const clearAllDiscovered = () => {
+      if (confirm(`Supprimer les ${discoveredAaps.length} AAP découverts par l'IA ?`)) {
+        setDiscoveredAaps([]);
+        setStored('uvpt:discovered-aaps', []);
+      }
+    };
     const runAiAnalysis = async (aap) => {
+      // ============ AI ANALYSIS ============
       if (aiAnalysis[aap.id]) return;
       setLoadingAi(true);
       try {
@@ -1443,7 +1593,7 @@ Réponds STRICTEMENT en JSON valide (pas de markdown, pas de fences) avec cette 
                 h('input', { type: 'radio', name: 'type', checked: activeType === t, onChange: () => setActiveType(t) }),
                 t === 'all' ? 'Tous' : t === 'public' ? 'Public' : 'Privé',
                 h('span', { className: 'radio-count' },
-                  t === 'all' ? AAP_DATA.length : AAP_DATA.filter(a => a.type === t).length))
+                  t === 'all' ? ALL_AAPS.length : ALL_AAPS.filter(a => a.type === t).length))
             ))),
 
         h('div', { className: 'filter-group' },
@@ -1454,7 +1604,7 @@ Réponds STRICTEMENT en JSON valide (pas de markdown, pas de fences) avec cette 
                 h('input', { type: 'radio', name: 'region', checked: activeRegion === r.id, onChange: () => setActiveRegion(r.id) }),
                 r.label,
                 h('span', { className: 'radio-count' },
-                  r.id === 'all' ? AAP_DATA.length : AAP_DATA.filter(a => a.regions.includes(r.id)).length))
+                  r.id === 'all' ? ALL_AAPS.length : ALL_AAPS.filter(a => a.regions.includes(r.id)).length))
             ))),
 
         h('div', { className: 'filter-group' },
@@ -1490,8 +1640,19 @@ Réponds STRICTEMENT en JSON valide (pas de markdown, pas de fences) avec cette 
         h('div', { className: 'topbar' },
           h('h1', { className: 'page-title' }, 'Tableau de veille'),
           h('div', { className: 'topbar-actions' },
+            h('button', {
+              className: 'btn accent',
+              onClick: runDiscovery,
+              disabled: discoveryLoading
+            }, discoveryLoading ? 'Recherche en cours…' : '✦ Découvrir de nouveaux AAP'),
+            discoveredAaps.length > 0 ? h('button', {
+              className: 'btn',
+              onClick: clearAllDiscovered,
+              title: 'Supprimer tous les AAP découverts par IA'
+            }, `🗑 ${discoveredAaps.length} IA`) : null,
             h('button', { className: 'btn', onClick: () => window.print() }, 'Imprimer'))
         ),
+        discoveryStatus ? h('div', { className: 'discovery-status' }, discoveryStatus) : null,
         h('div', { className: 'meta-line' },
           h('span', null, `${filtered.length} appel${filtered.length > 1 ? 's' : ''} affiché${filtered.length > 1 ? 's' : ''}`),
           h('span', { className: 'dot' }),
@@ -1523,7 +1684,9 @@ Réponds STRICTEMENT en JSON valide (pas de markdown, pas de fences) avec cette 
                     h('div', { className: `aap-score ${scoreClass}` }, a.uvpt_score),
                     h('div', { className: 'aap-score-label' }, 'Score')),
                   h('div', null,
-                    h('div', { className: 'aap-headline' }, a.title),
+                    h('div', { className: 'aap-headline' },
+                      a.title,
+                      a.isAiDiscovered ? h('span', { className: 'ai-badge', title: 'Découvert par l\'IA — à vérifier' }, '✦ IA') : null),
                     h('div', { className: 'aap-funder' }, a.funder),
                     h('div', { className: 'aap-tags' },
                       h('span', { className: `tag type-${a.type}` }, a.type === 'public' ? 'Public' : 'Privé'),
@@ -1567,7 +1730,8 @@ Réponds STRICTEMENT en JSON valide (pas de markdown, pas de fences) avec cette 
               h('div', { className: 'drawer-eyebrow' },
                 a.type === 'public' ? 'Financement public' : 'Mécénat privé',
                 ' · Score d\'adéquation UVPT : ',
-                h('strong', null, a.uvpt_score, '/100')),
+                h('strong', null, a.uvpt_score, '/100'),
+                a.isAiDiscovered ? h('span', { className: 'ai-badge', style: { marginLeft: '12px' } }, '✦ IA — à vérifier') : null),
               h('h2', { className: 'drawer-title' }, a.title),
               h('div', { className: 'drawer-funder' }, h('strong', null, a.funder))),
 
@@ -1683,6 +1847,13 @@ Réponds STRICTEMENT en JSON valide (pas de markdown, pas de fences) avec cette 
 
               h('div', { className: 'drawer-actions' },
                 h('button', { className: 'btn primary', onClick: () => window.open(a.url, '_blank') }, 'Page officielle ↗'),
+                a.isAiDiscovered ? h('button', {
+                  className: 'btn',
+                  onClick: () => {
+                    if (confirm('Supprimer cet AAP de ta base ?')) removeDiscoveredAap(a.id);
+                  },
+                  title: 'Supprimer cet AAP IA'
+                }, '🗑 Supprimer') : null,
                 ai
                   ? h('button', {
                       className: 'btn',
